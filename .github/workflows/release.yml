@@ -1,0 +1,82 @@
+name: Build Release (portable + llama-server)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download llama-server Windows x64 CPU
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path bin, bin\_tmp | Out-Null
+          $headers = @{ "User-Agent" = "GGUF-Runner-CI"; "Accept" = "application/vnd.github+json" }
+          $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=8" -Headers $headers
+          $asset = $null
+          foreach ($rel in $releases) {
+            foreach ($a in $rel.assets) {
+              $n = $a.name.ToLowerInvariant()
+              if ($n -match "win" -and $n -match "x64" -and $n -match "cpu" -and $n -match "\.zip$" -and $n -notmatch "cuda") { $asset = $a; break }
+            }
+            if ($asset) { break }
+          }
+          if (-not $asset) {
+            foreach ($rel in $releases) {
+              foreach ($a in $rel.assets) {
+                $n = $a.name.ToLowerInvariant()
+                if ($n -match "win" -and $n -match "x64" -and $n -match "\.zip$" -and $n -notmatch "cuda") { $asset = $a; break }
+              }
+              if ($asset) { break }
+            }
+          }
+          if (-not $asset) { throw "No Windows x64 zip on llama.cpp releases" }
+          Write-Host "Downloading $($asset.name)"
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "bin\_tmp\llama.zip" -UseBasicParsing
+          Expand-Archive -Path "bin\_tmp\llama.zip" -DestinationPath "bin\_tmp\out" -Force
+          $exe = Get-ChildItem -Path "bin\_tmp\out" -Recurse -Filter "llama-server.exe" | Select-Object -First 1
+          if (-not $exe) { $exe = Get-ChildItem -Path "bin\_tmp\out" -Recurse -Filter "server.exe" | Select-Object -First 1 }
+          if (-not $exe) { throw "llama-server.exe not in archive" }
+          Copy-Item -Force $exe.FullName "bin\llama-server.exe"
+          Get-ChildItem -Path $exe.Directory.FullName -Filter "*.dll" -EA SilentlyContinue | Copy-Item -Force -Destination "bin\"
+          Remove-Item -Recurse -Force "bin\_tmp"
+          Test-Path "bin\llama-server.exe" | ForEach-Object { if (-not $_) { throw "missing server" } }
+
+      - name: Pack zip
+        shell: pwsh
+        run: |
+          $ver = "${{ github.ref_name }}"
+          if (-not $ver) { $ver = "manual" }
+          $name = "GGUF-Runner-portable-$ver-with-server.zip"
+          $stage = "_stage"
+          Remove-Item -Recurse -Force $stage -EA SilentlyContinue
+          New-Item -ItemType Directory $stage | Out-Null
+          Get-ChildItem -Force | Where-Object { $_.Name -notin @(".git","_stage") } | ForEach-Object {
+            Copy-Item -Recurse -Force $_.FullName (Join-Path $stage $_.Name)
+          }
+          Compress-Archive -Path "$stage\*" -DestinationPath $name -Force
+          Remove-Item -Recurse -Force $stage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portable-with-server
+          path: GGUF-Runner-portable-*-with-server.zip
+          if-no-files-found: error
+
+      - name: Publish release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: GGUF-Runner-portable-*-with-server.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

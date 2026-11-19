@@ -1,0 +1,24 @@
+name: Build portable zip
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  zip:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create portable zip
+        shell: pwsh
+        run: |
+          $name = "GGUF-Runner-portable-${{ github.ref_name }}"
+          if ("${{ github.ref_name }}" -eq "") { $name = "GGUF-Runner-portable" }
+          Compress-Archive -Path * -DestinationPath "$name.zip" -Force
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-zip
+          path: GGUF-Runner-portable*.zip
