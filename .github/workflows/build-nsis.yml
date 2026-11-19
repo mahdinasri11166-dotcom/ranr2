@@ -37,9 +37,7 @@ jobs:
           $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force -Path bin, bin\_tmp | Out-Null
           
-          # استفاده از لینک مستقیم به نسخه پایدار b8581
           $url = "https://github.com/ggml-org/llama.cpp/releases/download/b8581/llama-b8581-bin-win-cpu-x64.zip"
-          
           Write-Host "Downloading $url"
           Invoke-WebRequest -Uri $url -OutFile "bin\_tmp\llama.zip" -UseBasicParsing
           Expand-Archive -Path "bin\_tmp\llama.zip" -DestinationPath "bin\_tmp\out" -Force
@@ -55,8 +53,6 @@ jobs:
           if (-not (Test-Path "bin\llama-server.exe")) { throw "bin\llama-server.exe missing after copy" }
           $len = (Get-Item "bin\llama-server.exe").Length
           Write-Host "OK llama-server.exe ($len bytes)"
-          
-          # Fail if the downloaded file is suspiciously small (corrupted download)
           if ($len -lt 1000000) { throw "FATAL: llama-server.exe is too small ($len bytes). Download likely corrupted." }
 
       - name: Build offline embedded Python (amd64) + packages
@@ -81,58 +77,38 @@ jobs:
 
           # --- Fix missing tkinter in embeddable python ---
           Write-Host "Copying tkinter from system Python..."
-          
-          # پیدا کردن مسیر واقعی پایتون از طریق خود پایتون
           $sysRoot = & python -c "import sys, os; print(os.path.dirname(sys.executable))"
-          $sysTcl = & python -c "import tkinter, os; print(os.path.join(os.path.dirname(tkinter.__file__), '..', '..', 'tcl'))"
-          if (-not (Test-Path $sysTcl)) { $sysTcl = Join-Path $sysRoot "tcl" }
-          
+          $sysTcl = & python -c "import tkinter, os; print(os.path.abspath(os.path.join(os.path.dirname(tkinter.__file__), '..', '..', 'tcl')))"
           $sysTkinter = & python -c "import tkinter, os; print(os.path.dirname(tkinter.__file__))"
 
-          Write-Host "Looking for tcl at: $sysTcl"
-          Write-Host "Looking for tkinter at: $sysTkinter"
+          Write-Host "Copying tcl from: $sysTcl"
+          Write-Host "Copying tkinter from: $sysTkinter"
 
-          if (Test-Path $sysTcl) { 
-              Copy-Item -Recurse -Force $sysTcl -Destination $offline 
-          } else { 
-              throw "tcl folder not found. Checked $sysTcl" 
-          }
+          if (Test-Path $sysTcl) { Copy-Item -Recurse -Force $sysTcl -Destination $offline } else { throw "tcl folder not found." }
+          if (Test-Path $sysTkinter) { Copy-Item -Recurse -Force $sysTkinter -Destination (Join-Path $offline "Lib") } else { throw "tkinter folder not found." }
           
-          if (Test-Path $sysTkinter) { 
-              Copy-Item -Recurse -Force $sysTkinter -Destination (Join-Path $offline "Lib") 
-          } else { 
-              throw "tkinter folder not found. Checked $sysTkinter" 
-          }
-          
-          # کپی کردن فایل‌های DLL مربوط به tkinter
           $dlls = @("_tkinter.pyd", "tcl86t.dll", "tk86t.dll", "zlib1.dll")
           foreach ($dll in $dlls) {
               $src = Join-Path $sysRoot $dll
               if (Test-Path $src) { Copy-Item -Force $src -Destination $offline }
           }
-          Write-Host "tkinter patched into embeddable python"
+          Write-Host "tkinter patched into embeddable python."
           # --- End of tkinter fix ---
 
+          # تنظیم فایل _pth برای اضافه کردن مسیر Lib
           $pth = Get-ChildItem $offline -Filter "python*._pth" | Select-Object -First 1
-          if (-not $pth) { throw "python*._pth not found in embed package" }
+          if (-not $pth) { throw "python*._pth not found" }
           $lines = @(Get-Content $pth.FullName)
           $new = @()
           $sawSite = $false
           foreach ($line in $lines) {
-            if ($line -match '^\s*#\s*import site') {
-              $new += 'import site'
-              $sawSite = $true
-            } elseif ($line -match '^\s*import site') {
-              $new += 'import site'
-              $sawSite = $true
-            } else {
-              $new += $line
-            }
+            if ($line -match '^\s*#\s*import site') { $new += 'import site'; $sawSite = $true }
+            elseif ($line -match '^\s*import site') { $new += 'import site'; $sawSite = $true }
+            else { $new += $line }
           }
           if (-not $sawSite) { $new += 'import site' }
           if (-not ($new -match 'site-packages')) { $new += 'Lib\site-packages' }
           Set-Content -Path $pth.FullName -Value $new -Encoding ASCII
-          Write-Host "Patched $($pth.Name)"
 
           $py = Join-Path $offline "python.exe"
           if (-not (Test-Path $py)) { throw "python.exe missing in embed tree" }
@@ -151,7 +127,6 @@ jobs:
 
           Write-Host "=== Installing llama-cpp-python (CPU) ==="
           $env:CMAKE_ARGS = "-DGGML_NATIVE=OFF"
-          
           & $py -m pip install scikit-build-core --no-warn-script-location
           & $py -m pip install "llama-cpp-python>=0.2.90" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu --no-warn-script-location --no-cache-dir
           
@@ -162,8 +137,13 @@ jobs:
           Write-Host "llama-cpp-python OK"
 
           Write-Host "=== Verify imports ==="
+          # تنظیم متغیرهای محیطی برای tkinter در زمان تست
+          $env:TCL_LIBRARY = Join-Path $offline "tcl\tcl8.6"
+          $env:TK_LIBRARY = Join-Path $offline "tcl\tk8.6"
+
           $checks = @(
             "import sys; print(sys.version)",
+            "import tkinter; print('tkinter OK')",
             "import customtkinter; print('customtkinter OK')",
             "import llama_cpp; print('llama_cpp OK')",
             "import requests; print('requests OK')",
