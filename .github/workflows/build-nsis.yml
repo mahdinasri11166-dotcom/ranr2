@@ -79,6 +79,28 @@ jobs:
 
           Expand-Archive -Path $zipPath -DestinationPath $offline -Force
 
+          # --- Fix missing tkinter in embeddable python ---
+          Write-Host "Copying tkinter from system Python..."
+          # پیدا کردن مسیر پایتون اصلی که توسط actions/setup-python نصب شده است
+          $sysPython = (Get-Command python).Source
+          $sysRoot = Split-Path (Split-Path $sysPython -Parent) -Parent
+          
+          # کپی کردن پوشه tcl و tkinter
+          $sysTcl = Join-Path $sysRoot "tcl"
+          $sysTkinter = Join-Path $sysRoot "Lib\tkinter"
+          
+          if (Test-Path $sysTcl) { Copy-Item -Recurse -Force $sysTcl -Destination $offline }
+          if (Test-Path $sysTkinter) { Copy-Item -Recurse -Force $sysTkinter -Destination (Join-Path $offline "Lib") }
+          
+          # کپی کردن فایل‌های DLL مربوط به tkinter (مثل _tkinter.pyd, tcl86t.dll, tk86t.dll)
+          $dlls = @("_tkinter.pyd", "tcl86t.dll", "tk86t.dll", "zlib1.dll")
+          foreach ($dll in $dlls) {
+              $src = Join-Path $sysRoot $dll
+              if (Test-Path $src) { Copy-Item -Force $src -Destination $offline }
+          }
+          Write-Host "tkinter patched into embeddable python"
+          # --- End of tkinter fix ---
+
           $pth = Get-ChildItem $offline -Filter "python*._pth" | Select-Object -First 1
           if (-not $pth) { throw "python*._pth not found in embed package" }
           $lines = @(Get-Content $pth.FullName)
