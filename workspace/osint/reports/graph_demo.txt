@@ -1,0 +1,32 @@
+گزارش OSINT: example.com
+فایل HTML: graph_demo.html
+
+## domain_graph — گراف
+null
+
+## domain_graph
+{
+  "ok": true,
+  "graph": {
+    "nodes": [
+      {
+        "id": "example.com",
+        "type": "apex"
+      },
+      {
+        "id": "a.example.com",
+        "type": "subdomain"
+      }
+    ],
+    "edges": [
+      {
+        "from": "example.com",
+        "to": "a.example.com",
+        "rel": "cert_san"
+      }
+    ]
+  },
+  "sources": [
+    "crt.sh"
+  ]
+}

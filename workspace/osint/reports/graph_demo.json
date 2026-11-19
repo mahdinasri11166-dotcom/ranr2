@@ -1,0 +1,33 @@
+{
+  "target": "example.com",
+  "modules": {
+    "domain_graph": {
+      "ok": true,
+      "graph": {
+        "nodes": [
+          {
+            "id": "example.com",
+            "type": "apex"
+          },
+          {
+            "id": "a.example.com",
+            "type": "subdomain"
+          }
+        ],
+        "edges": [
+          {
+            "from": "example.com",
+            "to": "a.example.com",
+            "rel": "cert_san"
+          }
+        ]
+      },
+      "sources": [
+        "crt.sh"
+      ]
+    }
+  },
+  "sources": [
+    "crt.sh"
+  ]
+}

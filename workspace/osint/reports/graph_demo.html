@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang='fa' dir='rtl'><head><meta charset='utf-8'>
+<title>گزارش OSINT — example.com</title>
+<style>
+body{font-family:Tahoma,Segoe UI,sans-serif;background:#0f1115;color:#e8e8ef;margin:0;padding:24px;line-height:1.6}
+h1{color:#e94560;margin:0 0 8px} h2{color:#7dd3fc;border-bottom:1px solid #333;padding-bottom:6px}
+.meta{color:#9aa;font-size:13px;margin-bottom:24px}
+.card{background:#1a1d27;border:1px solid #2a2f3a;border-radius:10px;padding:14px 16px;margin:12px 0}
+pre{white-space:pre-wrap;word-break:break-word;background:#0c0e14;padding:10px;border-radius:8px;font-size:12px}
+.tl{border-right:3px solid #e94560;padding-right:12px;margin:8px 0}
+.src{display:inline-block;background:#243;padding:2px 8px;border-radius:6px;margin:2px;font-size:12px}
+a{color:#7dd3fc}
+</style></head><body>
+<h1>گزارش OSINT — example.com</h1>
+<div class='meta'>هدف: <b>example.com</b> · تولید: 2026-11-19 12:09 UTC · GGUF Runner OSINT</div>
+<h2>خط زمان</h2><div class='card'>
+<div class='tl'><b>2026-11-19T12:09:37.727192+00:00</b> — شروع گزارش<div style='color:#9aa;font-size:12px'>example.com</div></div>
+<div class='tl'><b>2026-11-19T12:09:37.727451+00:00</b> — ماژول domain_graph<div style='color:#9aa;font-size:12px'>ok</div></div>
+</div>
+<h2>domain_graph — گراف</h2><div class='card'>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="420" viewBox="0 0 720 420" style="background:#0c0e14;border-radius:10px">
+<line x1="360" y1="210" x2="511" y2="210" stroke="#445" stroke-width="2"/>
+<text x="435" y="210" fill="#667" font-size="10" text-anchor="middle">cert_san</text>
+<circle cx="360" cy="210" r="16" fill="#e94560" opacity="0.9"/>
+<text x="360" y="242" fill="#dde" font-size="11" text-anchor="middle">example.com</text>
+<circle cx="511" cy="210" r="16" fill="#38bdf8" opacity="0.9"/>
+<text x="511" y="242" fill="#dde" font-size="11" text-anchor="middle">a.example.com</text>
+</svg>
+</div>
+<h2>domain_graph</h2><div class='card'>
+<pre>{
+  &quot;ok&quot;: true,
+  &quot;graph&quot;: {
+    &quot;nodes&quot;: [
+      {
+        &quot;id&quot;: &quot;example.com&quot;,
+        &quot;type&quot;: &quot;apex&quot;
+      },
+      {
+        &quot;id&quot;: &quot;a.example.com&quot;,
+        &quot;type&quot;: &quot;subdomain&quot;
+      }
+    ],
+    &quot;edges&quot;: [
+      {
+        &quot;from&quot;: &quot;example.com&quot;,
+        &quot;to&quot;: &quot;a.example.com&quot;,
+        &quot;rel&quot;: &quot;cert_san&quot;
+      }
+    ]
+  },
+  &quot;sources&quot;: [
+    &quot;crt.sh&quot;
+  ]
+}</pre>
+</div>
+<h2>منابع</h2><div class='card'>
+<span class='src'>crt.sh</span> 
+</div>
+<p class='meta'>این گزارش فقط از منابع عمومی/غیرفعال ساخته شده. مالکیت هویت را اثبات نمی‌کند. استفاده تهاجمی یا غیرقانونی مجاز نیست.</p></body></html>

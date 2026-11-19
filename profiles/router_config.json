@@ -1,0 +1,18 @@
+{
+  "endpoints": {
+    "general": "http://127.0.0.1:8080",
+    "code": "http://127.0.0.1:8081",
+    "trade": "http://127.0.0.1:8081"
+  },
+  "fallback": "http://127.0.0.1:8080",
+  "rules": [
+    {
+      "role": "code",
+      "patterns": ["code", "python", "javascript", "function", "api", "bug", "debug", "کد", "برنامه", "تابع", "اسکریپت", "باگ"]
+    },
+    {
+      "role": "trade",
+      "patterns": ["trade", "forex", "stock", "crypto", "btc", "معامله", "ترید", "بورس", "سهم", "بیتکوین", "فیوچرز"]
+    }
+  ]
+}

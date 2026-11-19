@@ -1,0 +1,11 @@
+{
+  "target": "example.com",
+  "modules": {
+    "x": 1
+  },
+  "sources": [
+    "user_supplied",
+    "public_dns",
+    "public_http"
+  ]
+}

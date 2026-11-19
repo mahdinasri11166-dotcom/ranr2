@@ -1,0 +1,9 @@
+{
+  "target": "t",
+  "modules": {},
+  "sources": [
+    "user_supplied",
+    "public_dns",
+    "public_http"
+  ]
+}

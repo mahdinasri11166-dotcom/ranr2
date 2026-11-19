@@ -1,0 +1,16 @@
+{
+  "id": "selftest_case",
+  "name": "selftest_case",
+  "target": "example.com",
+  "created_at": "2026-11-19T12:04:18.335286+00:00",
+  "updated_at": "2026-11-19T12:04:18.335324+00:00",
+  "notes": "",
+  "timeline": [
+    {
+      "time": "2026-11-19T12:04:18.335327+00:00",
+      "event": "case_created",
+      "detail": "example.com"
+    }
+  ],
+  "artifacts": []
+}

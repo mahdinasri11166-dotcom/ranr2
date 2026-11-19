@@ -1,0 +1,11 @@
+{
+  "target": "x",
+  "modules": {
+    "nested": true
+  },
+  "sources": [
+    "user_supplied",
+    "public_dns",
+    "public_http"
+  ]
+}
