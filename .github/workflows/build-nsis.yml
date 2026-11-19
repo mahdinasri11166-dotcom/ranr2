@@ -21,6 +21,12 @@ jobs:
         with:
           python-version: "3.11"
 
+      # نصب پایتون کامل برای استخراج فایل‌های tkinter
+      - name: Install full Python 3.11 via Chocolatey
+        shell: pwsh
+        run: |
+          choco install python311 -y --no-progress
+
       - name: Run selftest (syntax + tools)
         shell: pwsh
         run: |
@@ -36,27 +42,17 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force -Path bin, bin\_tmp | Out-Null
-          
-          # استفاده از لینک مستقیم به نسخه پایدار b8581
           $url = "https://github.com/ggml-org/llama.cpp/releases/download/b8581/llama-b8581-bin-win-cpu-x64.zip"
-          
           Write-Host "Downloading $url"
           Invoke-WebRequest -Uri $url -OutFile "bin\_tmp\llama.zip" -UseBasicParsing
           Expand-Archive -Path "bin\_tmp\llama.zip" -DestinationPath "bin\_tmp\out" -Force
-          
           $exe = Get-ChildItem -Path "bin\_tmp\out" -Recurse -Filter "llama-server.exe" | Select-Object -First 1
           if (-not $exe) { throw "llama-server.exe not found inside archive" }
-          
           Copy-Item -Force $exe.FullName "bin\llama-server.exe"
-          Get-ChildItem -Path $exe.Directory.FullName -Filter "*.dll" -ErrorAction SilentlyContinue |
-            Copy-Item -Force -Destination "bin\"
+          Get-ChildItem -Path $exe.Directory.FullName -Filter "*.dll" -ErrorAction SilentlyContinue | Copy-Item -Force -Destination "bin\"
           Remove-Item -Recurse -Force "bin\_tmp"
-          
-          if (-not (Test-Path "bin\llama-server.exe")) { throw "bin\llama-server.exe missing after copy" }
           $len = (Get-Item "bin\llama-server.exe").Length
           Write-Host "OK llama-server.exe ($len bytes)"
-          
-          # Fail if the downloaded file is suspiciously small (corrupted download)
           if ($len -lt 1000000) { throw "FATAL: llama-server.exe is too small ($len bytes). Download likely corrupted." }
 
       - name: Build offline embedded Python (amd64) + packages
@@ -80,25 +76,23 @@ jobs:
           Expand-Archive -Path $zipPath -DestinationPath $offline -Force
 
           # --- Fix missing tkinter in embeddable python ---
-          Write-Host "Copying tkinter from system Python..."
-          # پیدا کردن مسیر پایتون اصلی که توسط actions/setup-python نصب شده است
-          $sysPython = (Get-Command python).Source
-          $sysRoot = Split-Path (Split-Path $sysPython -Parent) -Parent
+          Write-Host "Copying tkinter from Chocolatey Python..."
+          # مسیر پایتون نصب شده توسط Chocolatey
+          $sysRoot = "C:\Python311"
           
-          # کپی کردن پوشه tcl و tkinter
           $sysTcl = Join-Path $sysRoot "tcl"
           $sysTkinter = Join-Path $sysRoot "Lib\tkinter"
           
-          if (Test-Path $sysTcl) { Copy-Item -Recurse -Force $sysTcl -Destination $offline }
-          if (Test-Path $sysTkinter) { Copy-Item -Recurse -Force $sysTkinter -Destination (Join-Path $offline "Lib") }
+          if (Test-Path $sysTcl) { Copy-Item -Recurse -Force $sysTcl -Destination $offline } else { throw "tcl folder not found in $sysRoot" }
+          if (Test-Path $sysTkinter) { Copy-Item -Recurse -Force $sysTkinter -Destination (Join-Path $offline "Lib") } else { throw "tkinter folder not found in $sysRoot" }
           
-          # کپی کردن فایل‌های DLL مربوط به tkinter (مثل _tkinter.pyd, tcl86t.dll, tk86t.dll)
+          # کپی کردن فایل‌های DLL
           $dlls = @("_tkinter.pyd", "tcl86t.dll", "tk86t.dll", "zlib1.dll")
           foreach ($dll in $dlls) {
               $src = Join-Path $sysRoot $dll
               if (Test-Path $src) { Copy-Item -Force $src -Destination $offline }
           }
-          Write-Host "tkinter patched into embeddable python"
+          Write-Host "tkinter patched into embeddable python from $sysRoot"
           # --- End of tkinter fix ---
 
           $pth = Get-ChildItem $offline -Filter "python*._pth" | Select-Object -First 1
@@ -139,11 +133,8 @@ jobs:
 
           Write-Host "=== Installing llama-cpp-python (CPU) ==="
           $env:CMAKE_ARGS = "-DGGML_NATIVE=OFF"
-          
           & $py -m pip install scikit-build-core --no-warn-script-location
-          
           & $py -m pip install "llama-cpp-python>=0.2.90" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu --no-warn-script-location --no-cache-dir
-          
           & $py -c "import llama_cpp; print('import ok', getattr(llama_cpp, '__version__', '?'))"
           if ($LASTEXITCODE -ne 0) {
             throw "FATAL: llama-cpp-python could not be installed/imported. Refusing to ship broken offline installer."
